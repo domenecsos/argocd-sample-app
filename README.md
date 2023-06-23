@@ -153,3 +153,165 @@ Se encarga [500-pushDockerImages.bat](500-pushDockerImages.bat).
 
 El repositorios está definido en una variable de entorno `%REPOSITORIO%`. Ajsutar al repositorio disponible.
 
+## Despliegue en Openshift
+
+### Aplicación web
+
+Lo fundamental es desplegar la imagen exponiendo el puerto TCP.
+- Este servidor web expone el puerto 80.
+- Usa la imagen `jobs.rtve.local:5000/unix-piloto-mss-r01a-id-web:latest` abada de "pushar".
+- El nombre del despliegue y el de la aplicación OpenShift (`app`) asociada `unix-piloto-mss-r01a-id-web` coinciden con el de la imagen por simple comodidad.
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: unix-piloto
+  name: 'unix-piloto-mss-r01a-id-web'
+spec:
+  selector:
+    matchLabels:
+      app: unix-piloto-mss-r01a-id-web
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: unix-piloto-mss-r01a-id-web
+    spec:
+      containers:
+        - name: container
+          image: >-
+            jobs.rtve.local:5000/unix-piloto-mss-r01a-id-web:latest
+          ports:
+            - containerPort: 80
+              protocol: TCP
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+```
+El servicio le da un nombre de DNS en la red interna del cluster y lo hace accesible en esta red.
+En este caso, `unix-piloto-mss-r01a-id-estaticos.unix-piloto.svc.cluster.local` 
+formado por el nombre del servicio, el namespace `unix-piloto` y el sufijo `svc.cluster.local` que lo restringe al clúster local.
+Se transmite de forma directa el puerto 80 para tráfico HTTP en limpio.
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: unix-piloto-mss-r01a-id-estaticos
+  namespace: unix-piloto
+spec:
+  selector:
+    app: unix-piloto-mss-r01a-id-web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+```
+La ruta (mejor que un ingress) permite exponer el servicio fuera del clúster.
+- El nombre indica que es una ruta, por donde pasaran las peticiones al Apache tanto de estáticos como de proxy a la API.
+- En `spec.to.name` se engancha con el servicio anterior (nombre en corto, mismo namespace).
+- En `spec.tls` se define:
+	- Una terminación perimetral `termination: edge` dejando que sea la ruta el límite del tráfico seguro.
+	- Se redirecciona el tráfico HTTP a HTTPS con `insecureEdgeTerminationPolicy: Redirect`.
+	- se podrían dar los certificados de las CA para el tráfico seguro.
+- El `spec.host` puede ser cualquier valor:
+	- La parte `unix-piloto-mss-r01a-id` es arbitraria pero significativa.
+	- El sufijo `.apps.k8spro.nextret.net` va a parar a la IP donde los nombres de `spec.host` se interpretan de forma similar a los virtual host.
+ 
+```
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: unix-piloto-mss-r01a-id-route
+  namespace: unix-piloto
+  labels: {}
+spec:
+  to:
+    kind: Service
+    name: unix-piloto-mss-r01a-id-estaticos
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+    destinationCACertificate: ''
+  host: unix-piloto-mss-r01a-id.apps.k8spro.nextret.net
+  path: /
+  port:
+    targetPort: 80
+```
+#### Troubleshooting
+- La imagen de Apache permite hacer un `apt-get update` y `apt install wget` para probar un wget `http://localhost`
+- Desde otro contenedor que disponga también de `wget`, validar que resuelve el nombre con `ping unix-piloto-mss-r01a-id-estaticos` y luego un `wget http://unix-piloto-mss-r01a-id-estaticos`
+
+### Despliegue de la API
+El despliegue de la API será similar con las particularidades de:
+- Ausencia de ruta ya que se hará un proxy pass por la propia web.
+- El nombre del servicio será `unix-piloto-mss-r01a-id-api` para encajar con la definición del proxy pass en el `unix-piloto-mss-r01a-id-httpd.conf` que se ha metido en la imagen de Apache.
+```
+	ProxyPass "/api"  "http://unix-piloto-mss-r01a-id-api:8080/api/"
+ 	ProxyPassReverse "/api"  "http://unix-piloto-mss-r01a-id-api:8080/api/"
+```
+El despliegue de la imagen:
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: unix-piloto
+  name: 'unix-piloto-mss-r01a-id-app'
+spec:
+  selector:
+    matchLabels:
+      app: unix-piloto-mss-r01a-id-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: unix-piloto-mss-r01a-id-app
+    spec:
+      containers:
+        - name: container
+          image: >-
+            jobs.rtve.local:5000/unix-piloto-mss-r01a-id-app:latest
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: A_B2_C2
+              value: Nuevo valor de a.b2.c2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+```
+El servicio proxy-pass-friendly:
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: unix-piloto-mss-r01a-id-api
+  namespace: unix-piloto
+spec:
+  selector:
+    app: unix-piloto-mss-r01a-id-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+```
+Y la variable de entorno `A_B2_C2` que redefine la propiedad `a.b2.c2` del `application.yml` con `Otro valor rama dos.`
+como se ve en [https://unix-piloto-mss-r01a-id.apps.k8spro.nextret.net/api/props](https://unix-piloto-mss-r01a-id.apps.k8spro.nextret.net/api/props).
+
+Nótese que se accede a la API por el puerto 80 de la ruta, que va al servicio de Apache, que proxy-pasa al servicio de la API.
+```
+[
+	{
+		name: "a.b1.c1",
+		value: "Valor rama uno."
+	},
+	{
+		name: "a.b2.c2",
+		value: "Otro valor rama dos."
+	}
+]
+```
