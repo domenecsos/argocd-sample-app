@@ -17,3 +17,6 @@ buildNumber.properties
 .classpath
 
 .settings
+
+despliegues/*.zip
+despliegues/*.jar
