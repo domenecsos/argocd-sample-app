@@ -1,0 +1,14 @@
+version: "3"
+services:
+
+  unix-piloto-mss-r01a-id-api:
+    image: unix-piloto-mss-r01a-id/unix-piloto-mss-r01a-id-app
+    container_name: api
+    ports:
+      - "8080:8080"
+
+  unix-piloto-mss-r01a-id-web:
+    image: unix-piloto-mss-r01a-id/unix-piloto-mss-r01a-id-web
+    container_name: web
+    ports:
+      - "80:80"

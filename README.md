@@ -87,5 +87,62 @@ LoadModule proxy_http_module modules/mod_proxy_http.so
  	ProxyPassReverse "/api"  "http://unix-piloto-mss-r01a-id-api:8080/api/"
 </IfModule>
 ```
+### Validar como Docker compose
 
+Con [400-runDockerCompose.bat](400-runDockerCompose.bat) y el [docker-compose.yml](docker-compose.yml) 
+se puede ejecutar el conjunto de las dos imágenes, donde [http://localhost/](http://localhost/) 
+expone la web y permite llamar a la API de la app proxypasada por el puerto 80 
+(también se publica por el 8080, por si acaso).
 
+El compose:
+```
+version: "3"
+services:
+
+  unix-piloto-mss-r01a-id-api:
+    image: unix-piloto-mss-r01a-id/unix-piloto-mss-r01a-id-app
+    container_name: api
+    ports:
+      - "8080:8080"
+
+  unix-piloto-mss-r01a-id-web:
+    image: unix-piloto-mss-r01a-id/unix-piloto-mss-r01a-id-web
+    container_name: web
+    ports:
+      - "80:80"
+```
+Traza del arranque:
+```
+Creating network "argocd-sample-app_default" with the default driver
+Creating api ... done
+Creating web ... done
+Attaching to api, web
+
+web                            | AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 172.31.0.3. Set the 'ServerName' directive globally to suppress this message
+web                            | AH00558: httpd: Could not reliably determine the server's fully qualified domain name, using 172.31.0.3. Set the 'ServerName' directive globally to suppress this message
+web                            | [Fri Jun 23 13:35:15.179769 2023] [mpm_event:notice] [pid 1:tid 139663550586176] AH00489: Apache/2.4.57 (Unix) configured -- resuming normal operations
+web                            | [Fri Jun 23 13:35:15.180043 2023] [core:notice] [pid 1:tid 139663550586176] AH00094: Command line: 'httpd -D FOREGROUND'
+
+api                            |
+api                            |   .   ____          _            __ _ _
+api                            |  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+api                            | ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+api                            |  \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+api                            |   '  |____| .__|_| |_|_| |_\__, | / / / /
+api                            |  =========|_|==============|___/=/_/_/_/
+api                            |  :: Spring Boot ::               (v2.7.12)
+api                            |
+api                            | 2023-06-23 15:35:16.985  INFO 1 --- [           main] g.s.p.k.u.UnixPilotoMssR01aIdApplication : Starting UnixPilotoMssR01aIdApplication v0.0.1-SNAPSHOT using Java 1.8.0_212 on ab6d094f614a with PID 1 (/app.jar started by spring in /)
+api                            | 2023-06-23 15:35:16.991  INFO 1 --- [           main] g.s.p.k.u.UnixPilotoMssR01aIdApplication : No active profile set, falling back to 1 default profile: "default"
+api                            | 2023-06-23 15:35:19.265  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+api                            | 2023-06-23 15:35:19.308  INFO 1 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+api                            | 2023-06-23 15:35:19.308  INFO 1 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.75]
+api                            | 2023-06-23 15:35:19.491  INFO 1 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/api]    : Initializing Spring embedded WebApplicationContext
+api                            | 2023-06-23 15:35:19.491  INFO 1 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2352 ms
+api                            | 2023-06-23 15:35:20.300  INFO 1 --- [           main] pertySourcedRequestMappingHandlerMapping : Mapped URL path [/v2/api-docs] onto method [springfox.documentation.swagger2.web.Swagger2Controller#getDocumentation(String, HttpServletRequest)]
+api                            | 2023-06-23 15:35:20.891  INFO 1 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path '/api'
+api                            | 2023-06-23 15:35:20.893  INFO 1 --- [           main] d.s.w.p.DocumentationPluginsBootstrapper : Context refreshed
+api                            | 2023-06-23 15:35:20.926  INFO 1 --- [           main] d.s.w.p.DocumentationPluginsBootstrapper : Found 1 custom documentation plugin(s)
+api                            | 2023-06-23 15:35:20.984  INFO 1 --- [           main] s.d.s.w.s.ApiListingReferenceScanner     : Scanning for api listing references
+api                            | 2023-06-23 15:35:21.202  INFO 1 --- [           main] g.s.p.k.u.UnixPilotoMssR01aIdApplication : Started UnixPilotoMssR01aIdApplication in 5.252 seconds (JVM running for 6.153)
+```
