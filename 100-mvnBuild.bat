@@ -1,8 +1,11 @@
 @echo off
-if exist despliegues\*.jar del despliegues\*.jar
-if exist despliegues\*.zip del despliegues\*.zip
-if exist despliegues\*.tar.gz del despliegues\*.tar.gz
-pause
+
+set NEXUS=docker\nexus
+if exist %NEXUS%\*.jar    del %NEXUS%\*.jar
+if exist %NEXUS%\*.zip    del %NEXUS%\*.zip
+if exist %NEXUS%\*.tar.gz del %NEXUS%\*.tar.gz
+
 call mvn clean package
+
 pause
 

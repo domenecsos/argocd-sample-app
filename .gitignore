@@ -18,5 +18,5 @@ buildNumber.properties
 
 .settings
 
-despliegues/*.zip
-despliegues/*.jar
+docker/nexus/*.zip
+docker/nexus/*.jar

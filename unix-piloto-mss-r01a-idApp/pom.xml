@@ -75,7 +75,7 @@
 						</goals>
 						<configuration>
 							<sourceFile>${project.build.directory}/unix-piloto-mss-r01a-id-app-${project.version}.jar</sourceFile>
-							<destinationFile>${project.basedir}/../despliegues/unix-springboot-${project.version}.jar</destinationFile>
+							<destinationFile>${project.basedir}/../docker/nexus/unix-springboot-${project.version}.jar</destinationFile>
 						</configuration>
 					</execution>
 				</executions>

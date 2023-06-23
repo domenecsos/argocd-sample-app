@@ -49,7 +49,7 @@
 						</goals>
 						<configuration>
 							<sourceFile>${project.build.directory}/unix-piloto-mss-r01a-id-web-${project.version}-estaticos.zip</sourceFile>
-							<destinationFile>${project.basedir}/../despliegues/unix-estaticos-${project.version}.zip</destinationFile>
+							<destinationFile>${project.basedir}/../docker/nexus/unix-estaticos-${project.version}.zip</destinationFile>
 						</configuration>
 					</execution>
 				</executions>
