@@ -146,3 +146,10 @@ api                            | 2023-06-23 15:35:20.926  INFO 1 --- [          
 api                            | 2023-06-23 15:35:20.984  INFO 1 --- [           main] s.d.s.w.s.ApiListingReferenceScanner     : Scanning for api listing references
 api                            | 2023-06-23 15:35:21.202  INFO 1 --- [           main] g.s.p.k.u.UnixPilotoMssR01aIdApplication : Started UnixPilotoMssR01aIdApplication in 5.252 seconds (JVM running for 6.153)
 ```
+
+### Subida al repositorio de imagenes
+
+Se encarga [500-pushDockerImages.bat](500-pushDockerImages.bat).
+
+El repositorios está definido en una variable de entorno `%REPOSITORIO%`. Ajsutar al repositorio disponible.
+
