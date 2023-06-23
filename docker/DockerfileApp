@@ -22,6 +22,7 @@ RUN chown spring /logs
 RUN chgrp -R 0 /logs && chmod -R g=u /logs
 
 USER spring:spring
-ARG JAR_FILE=target/*.jar
+
+ARG JAR_FILE=nexus/*.jar
 COPY ${JAR_FILE} app.jar
 ENTRYPOINT ["java","-jar","/app.jar"]

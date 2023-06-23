@@ -48,8 +48,8 @@
 							<goal>copy</goal>
 						</goals>
 						<configuration>
-							<sourceFile>${project.build.directory}/unix-piloto-mss-r01a-id-web-${project.version}-estaticos.zip</sourceFile>
-							<destinationFile>${project.basedir}/../docker/nexus/unix-estaticos-${project.version}.zip</destinationFile>
+							<sourceFile>${project.build.directory}/unix-piloto-mss-r01a-id-web-${project.version}-estaticos.tar.gz</sourceFile>
+							<destinationFile>${project.basedir}/../docker/nexus/unix-estaticos-${project.version}.tar.gz</destinationFile>
 						</configuration>
 					</execution>
 				</executions>

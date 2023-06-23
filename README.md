@@ -2,9 +2,9 @@
 
 Aplicación ejemplo compuesta por una API en SpringBoot y un site estático
 
-Cada uno de los dos modulos copia el artefacto generado en `target` al directorio común `despliegues`, cambiando el nombre del artefacto pero incluyendo la versión.
+Cada uno de los dos modulos copia el artefacto generado en `target` al directorio común `docker/nexus`, cambiando el nombre del artefacto pero incluyendo la versión.
 
-## Modo de uso
+## Preparación y verificación en local de las imágenes
 
 ### Construcción Maven
 
@@ -12,7 +12,7 @@ Disponer de Maven y Java 8 en la línea de comandos.
 
 Ejecutar [100-mvnBuild.bat](100-mvnBuild.bat).
 
-El script borra el directorio de despliegues y a continuación hace un `mvn clean package` del proyecto padre.
+El script borra el directorio de docker/nexus y a continuación hace un `mvn clean package` del proyecto padre.
 
 Al final de la construcción del \*.jar de SpringBoot este se copia en el directorio de desplegables.
 ```
@@ -23,12 +23,12 @@ Al final de la construcción del \*.jar de SpringBoot este se copia en el direct
 [INFO] --- spring-boot-maven-plugin:2.7.12:repackage (repackage) @ unix-piloto-mss-r01a-id-app ---
 [INFO] Replacing main artifact with repackaged archive
 [INFO] --- copy-rename-maven-plugin:1.0:copy (copy-file) @ unix-piloto-mss-r01a-id-app ---
-[INFO] Copied C:\_exe\E31710\Fuentes\AppPrueba\argocd-sample-app\unix-piloto-mss-r01a-idApp\target\unix-piloto-mss-r01a-id-app-0.0.1-SNAPSHOT.jar to C:\_exe\E31710\Fuentes\AppPrueba\argocd-sample-app\unix-piloto-mss-r01a-idApp\..\despliegues\unix-springboot-0.0.1-SNAPSHOT.jar
+[INFO] Copied C:\_exe\E31710\Fuentes\AppPrueba\argocd-sample-app\unix-piloto-mss-r01a-idApp\target\unix-piloto-mss-r01a-id-app-0.0.1-SNAPSHOT.jar to C:\_exe\E31710\Fuentes\AppPrueba\argocd-sample-app\unix-piloto-mss-r01a-idApp\..\docker/nexus\unix-springboot-0.0.1-SNAPSHOT.jar
 ```
 
 La aplicación web genera un \*.jar vacío sin utilidad.
 Interesa el assembly del contenido web (configurado en tres formatos comprimidos a la vez, elegir el preferido).
-Finalmente se copia un comprimido en el directorio de `despliegues`.
+Finalmente se copia un comprimido en el directorio de `docker/nexus`.
 ```
 [INFO] -------< es.gob.sanidad.piloto.k8s:unix-piloto-mss-r01a-id-web >--------
 [INFO] Building UnixPilotoMssR01aIdWeb 0.0.1-SNAPSHOT                     [3/3]
@@ -40,6 +40,52 @@ Finalmente se copia un comprimido en el directorio de `despliegues`.
 [INFO] Building zip: C:\_exe\E31710\Fuentes\AppPrueba\argocd-sample-app\unix-piloto-mss-r01a-idWeb\target\unix-piloto-mss-r01a-id-web-0.0.1-SNAPSHOT-estaticos.zip
 [INFO]
 [INFO] --- copy-rename-maven-plugin:1.0:copy (copy-file) @ unix-piloto-mss-r01a-id-web ---
-[INFO] Copied C:\_exe\E31710\Fuentes\AppPrueba\argocd-sample-app\unix-piloto-mss-r01a-idWeb\target\unix-piloto-mss-r01a-id-web-0.0.1-SNAPSHOT-estaticos.zip to C:\_exe\E31710\Fuentes\AppPrueba\argocd-sample-app\unix-piloto-mss-r01a-idWeb\..\despliegues\unix-estaticos-0.0.1-SNAPSHOT.zip
+[INFO] Copied C:\_exe\E31710\Fuentes\AppPrueba\argocd-sample-app\unix-piloto-mss-r01a-idWeb\target\unix-piloto-mss-r01a-id-web-0.0.1-SNAPSHOT-estaticos.zip to C:\_exe\E31710\Fuentes\AppPrueba\argocd-sample-app\unix-piloto-mss-r01a-idWeb\..\docker/nexus\unix-estaticos-0.0.1-SNAPSHOT.zip
 ```
+### Construcción de las imágenes
+
+Ejecutar 
+
+- [200-buildSpringBootDockerImage.bat](200-buildSpringBootDockerImage.bat) para construir la imagen Docker de la aplicación SpringBoot.
+- [300-buildApacheDockerImage.bat](300-buildApacheDockerImage.bat) para construir la imagen Docker de la web de estáticos.
+
+Ambas imágenes se construyen desde el directorio `docker` donde están los Dockerfile
+y para marcar conceptualmente que se deben construir desde Nexus
+usan los artefactos en el directorio `docker/nexus`,
+no los artefactos del directorio `target` de la aplicación.
+
+#### Test unitario de las imágenes
+
+Con [210-testSpringBootDockerImage.bat](210-testSpringBootDockerImage.bat) y 
+[211-stopTestSpringBootDockerImage.bat](211-stopTestSpringBootDockerImage.bat) se puede validar el funcionamiento de la API en solitario.
+Dejar que arranque la API y entonces recargar Swagger en el navegador que se abre.
+
+Para probar la imagen del servidor web
+```
+docker run -d -p 80:80 --name unix-piloto-mss-r01a-id-web unix-piloto-mss-r01a-id/unix-piloto-mss-r01a-id-web
+```
+Abrir http://localhost/ 
+Al acabar:
+```
+docker stop unix-piloto-mss-r01a-id-web
+docker rm   unix-piloto-mss-r01a-id-web
+```
+
+#### Preparación de las imágenes
+
+Obtener la config inicial de Apache, adaptando a la imagen que se use
+```
+docker run --rm httpd:2.4 cat /usr/local/apache2/conf/httpd.conf > unix-piloto-mss-r01a-id-httpd.conf
+```
+Reescribir la configuración de Apache obtenida añadiendo estas líneas en el sitio correspondiente a cada bloque
+```
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule proxy_http_module modules/mod_proxy_http.so
+
+<IfModule proxy_module>
+	ProxyPass "/api"  "http://unix-piloto-mss-r01a-id-api:8080/api/"
+ 	ProxyPassReverse "/api"  "http://unix-piloto-mss-r01a-id-api:8080/api/"
+</IfModule>
+```
+
 
