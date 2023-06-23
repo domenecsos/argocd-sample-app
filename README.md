@@ -6,6 +6,8 @@ Cada uno de los dos modulos copia el artefacto generado en `target` al directori
 
 ## Modo de uso
 
+### Construcción Maven
+
 Disponer de Maven y Java 8 en la línea de comandos.
 
 Ejecutar [100-mvnBuild.bat](100-mvnBuild.bat).
