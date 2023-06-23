@@ -1,0 +1,10 @@
+server.servlet.context-path: /api
+
+# Requerido por Swagger.  
+spring.mvc.pathmatch.matching-strategy: ANT_PATH_MATCHER
+
+a:
+  b1:
+    c1: Valor rama uno.
+  b2:
+    c2: Otro valor rama dos.
