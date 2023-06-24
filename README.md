@@ -315,3 +315,69 @@ Nótese que se accede a la API por el puerto 80 de la ruta, que va al servicio d
 	}
 ]
 ```
+## Despliegue con ArgoCD
+
+Usaremos el repositorio [https://github.com/domenecsos/argocd-vault-plugin-test](https://github.com/domenecsos/argocd-vault-plugin-test) 
+donde de momento hay un secreto `example-secret.yml` en espera de culminar la prueba de concepto de Vault.
+
+```
+kind: Secret
+apiVersion: v1
+metadata:
+  name: example-secret
+  annotations:
+    avp.kubernetes.io/path: "avp/data/test"
+type: Opaque
+stringData:
+  sample-secret: <sample>
+```
+Accedemos a la consola de ArgoCD y creamos una nueva aplicación que expresada en YAML queda así.
+```
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: test-argo-cd
+spec:
+  destination:
+    name: ''
+    namespace: myargocd
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: .
+    repoURL: 'https://github.com/domenecsos/argocd-vault-plugin-test/'
+    targetRevision: HEAD
+  sources: []
+  project: avpluginproj
+```
+**Importante**
+> Todo esto queda sujeto a completar 
+> 1) la prueba de concepto de Vault para que el secreto anterior tome su valor de Vault, y 
+> 2) la configuración final de la instancia de Argo CD según una lista de criterios.
+
+El contenido de este repositorio git no tiene secreto: 
+Son los manifiestos que anteriormente se han creado a mano en el namespace `unix-piloto`.
+Por motivos de configuración temporal de ArgoCD, esta aplicación despliega al namespace `myargocd`
+(ver el YAML de la definición de la aplicación).
+
+En consecuencia, los cambios a aplicar al crear un fichero para cada manifiesto son:
+- Eliminar el `namespace: unix-piloto` de **todos** los manifiestos y dejar que sea ArgoCD quien maneje el namespace destino según define la aplicación.
+- En el caso de la ruta
+	- Evitar conflictos y dar un host distinto del ya usado:
+		- `host: unix-piloto-mss-r01a-id-myargocd.apps.k8spro.nextret.net`.
+		- Quitar `destinationCACertificate: ''` que no se sincroniza por no tener sentido.
+- No probar los accesos a la API hasta que esté desplegada para evitar que Apache la de por no disponible.
+- De paso, subir la API a 3 réplicas y Apache a 2 réplicas.
+
+El resultado final despliegue luce así.
+![Resultado final despliegue](README.img/argocd.png)	
+
+Para llegar a todo verde puede ser necesario resincronizar con `prune` alguna vez.
+
+La homepage de la web:
+![Home](README.img/home.png)
+
+- Ejemplo de API, propiedades Spring Boot:
+![Ejemplo de API, propiedades Spring Boot](README.img/one-api.png)
+
+
+	
